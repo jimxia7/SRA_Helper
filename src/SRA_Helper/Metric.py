@@ -1,6 +1,6 @@
 import numpy as np
 
-def align_and_rmsle(x1, y1, x2, y2, n_points=None):
+def align_and_rmse(x1, y1, x2, y2, n_points=100):
     """
     Interpolate two curves onto a common x-axis, then compute RMSLE.
 
@@ -23,11 +23,6 @@ def align_and_rmsle(x1, y1, x2, y2, n_points=None):
         Second curve interpolated onto common_x.
     rmsle : float
         Root mean squared log error between the interpolated arrays.
-
-    Notes
-    -----
-    - Uses np.log(), so value needs to be positive
-    - In practice, RMSLE is usually used for nonnegative values.
     """
     
     x1 = np.asarray(x1, dtype=float)
@@ -43,6 +38,7 @@ def align_and_rmsle(x1, y1, x2, y2, n_points=None):
     # Sort by x so interpolation works correctly
     idx1 = np.argsort(x1)
     idx2 = np.argsort(x2)
+
     x1, y1 = x1[idx1], y1[idx1]
     x2, y2 = x2[idx2], y2[idx2]
 
@@ -53,18 +49,13 @@ def align_and_rmsle(x1, y1, x2, y2, n_points=None):
     if xmin >= xmax:
         raise ValueError("The two x-axes do not overlap.")
 
-    if n_points is None:
-        common_x = np.union1d(x1[(x1 >= xmin) & (x1 <= xmax)],
-                              x2[(x2 >= xmin) & (x2 <= xmax)])
-    else:
-        common_x = np.linspace(xmin, xmax, n_points)
+    common_x = np.logspace(np.log10(xmin),
+                           np.log10(xmax),
+                           (np.log10(xmax)-np.log10(xmin))*100+1)
 
     y1_interp = np.interp(common_x, x1, y1)
     y2_interp = np.interp(common_x, x2, y2)
 
-    if np.any(y1_interp < -1) or np.any(y2_interp < -1):
-        raise ValueError("RMSLE with log1p requires interpolated values >= -1.")
+    rmse = np.sqrt(np.mean(y1_interp - y2_interp) ** 2)
 
-    rmsle = np.sqrt(np.mean((np.log(y1_interp) - np.log(y2_interp)) ** 2))
-
-    return common_x, y1_interp, y2_interp, rmsle
+    return common_x, y1_interp, y2_interp, rmse
