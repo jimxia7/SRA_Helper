@@ -14,7 +14,7 @@ def align_and_rmse(x1, y1, x2, y2, n_points=100):
         Number of points in the common axis. If None, uses the union of x1 and x2.
 
     Returns
-    -------
+    ------- 
     common_x : np.ndarray
         Shared x-axis.
     y1_interp : np.ndarray
@@ -30,32 +30,42 @@ def align_and_rmse(x1, y1, x2, y2, n_points=100):
     x2 = np.asarray(x2, dtype=float)
     y2 = np.asarray(y2, dtype=float)
 
+    valid1 = np.isfinite(x1) & np.isfinite(y1) & (x1 > 0)
+    valid2 = np.isfinite(x2) & np.isfinite(y2) & (x2 > 0)
+    x1, y1 = x1[valid1], y1[valid1]
+    x2, y2 = x2[valid2], y2[valid2]
+
     if x1.ndim != 1 or y1.ndim != 1 or x2.ndim != 1 or y2.ndim != 1:
         raise ValueError("All inputs must be 1D arrays.")
     if len(x1) != len(y1) or len(x2) != len(y2):
         raise ValueError("Each x array must have the same length as its y array.")
 
-    # Sort by x so interpolation works correctly
-    idx1 = np.argsort(x1)
-    idx2 = np.argsort(x2)
+    if np.array_equal(x1,x2):
+        rmse = np.sqrt(np.mean((y1 - y2) ** 2))
 
-    x1, y1 = x1[idx1], y1[idx1]
-    x2, y2 = x2[idx2], y2[idx2]
+        return x1,y1,y2,rmse
+    else:
+        # Sort by x so interpolation works correctly
+        idx1 = np.argsort(x1)
+        idx2 = np.argsort(x2)
 
-    # Keep only overlapping region
-    xmin = max(x1.min(), x2.min())
-    xmax = min(x1.max(), x2.max())
+        x1, y1 = x1[idx1], y1[idx1]
+        x2, y2 = x2[idx2], y2[idx2]
 
-    if xmin >= xmax:
-        raise ValueError("The two x-axes do not overlap.")
+        # Keep only overlapping region
+        xmin = max(x1.min(), x2.min())
+        xmax = min(x1.max(), x2.max())
 
-    common_x = np.logspace(np.log10(xmin),
-                           np.log10(xmax),
-                           int((np.log10(xmax)-np.log10(xmin))*100)+1)
+        if xmin >= xmax:
+            raise ValueError("The two x-axes do not overlap.")
+        
+        common_x = np.logspace(np.log10(xmin),
+                            np.log10(xmax),
+                            int((np.log10(xmax)-np.log10(xmin))*n_points)+1)
 
-    y1_interp = np.interp(common_x, x1, y1)
-    y2_interp = np.interp(common_x, x2, y2)
+        y1_interp = np.interp(common_x, x1, y1)
+        y2_interp = np.interp(common_x, x2, y2)
 
-    rmse = np.sqrt(np.mean((y1_interp - y2_interp) ** 2))
+        rmse = np.sqrt(np.mean((y1_interp - y2_interp) ** 2))
 
-    return common_x, y1_interp, y2_interp, rmse
+        return common_x, y1_interp, y2_interp, rmse

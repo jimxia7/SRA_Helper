@@ -1,10 +1,30 @@
-import numpy as np
+from typing import Literal, overload
 
-def stair_step_Vs_profile(Thickness: np.ndarray, 
-                          Vs: np.ndarray,
+import numpy as np
+import numpy.typing as npt
+
+@overload
+def stair_step_Vs_profile(Thickness: npt.ArrayLike,
+                          Vs: npt.ArrayLike,
+                          starting_depth: float = 0,
+                          Depth_columns: Literal[1] = 1) -> tuple[np.ndarray, np.ndarray]: ...
+@overload
+def stair_step_Vs_profile(Thickness: npt.ArrayLike,
+                          Vs: npt.ArrayLike,
+                          starting_depth: float = 0,
+                          *,
+                          Depth_columns: Literal[2]) -> tuple[np.ndarray, np.ndarray, np.ndarray]: ...
+@overload
+def stair_step_Vs_profile(Thickness: npt.ArrayLike,
+                          Vs: npt.ArrayLike,
+                          starting_depth: float,
+                          Depth_columns: Literal[2]) -> tuple[np.ndarray, np.ndarray, np.ndarray]: ...
+
+def stair_step_Vs_profile(Thickness: npt.ArrayLike,
+                          Vs: npt.ArrayLike,
                           starting_depth: float = 0,
                           Depth_columns: int = 1):
-    
+
     """
     Converts a layered soil profile into a stair-step profile for plotting.
 
@@ -13,9 +33,9 @@ def stair_step_Vs_profile(Thickness: np.ndarray,
 
     Parameters
     ----------
-    Thickness : np.ndarray
+    Thickness : array_like
         Thickness of each soil layer (m). Shape: (n,)
-    Vs : np.ndarray
+    Vs : array_like
         Shear wave velocity of each soil layer (m/s). Shape: (n,)
     starting_depth : float, optional
         Depth of the top of the first layer (m). Default: 0
@@ -23,18 +43,27 @@ def stair_step_Vs_profile(Thickness: np.ndarray,
         Layout of the returned depths. Default: 1
 
         1 : flat stair-step array, top and bottom interleaved, for plotting.
-        2 : one row per layer with columns [top, bottom].
+        2 : separate arrays of layer tops and bottoms.
 
     Returns
     -------
-    Depth : np.ndarray
-        Depth values (m). Shape: (2n,) if Depth_columns == 1,
-        (n, 2) with columns [top, bottom] if Depth_columns == 2.
-    New_Vs : np.ndarray
-        Vs values paired with each depth row (m/s). Shape: (2n,) if
-        Depth_columns == 1, (n,) if Depth_columns == 2.
+    If Depth_columns == 1 (two arrays):
+        Depth : np.ndarray
+            Stair-step depths (m), top and bottom interleaved. Shape: (2n,)
+        New_Vs : np.ndarray
+            Vs paired with each depth (m/s). Shape: (2n,)
+    If Depth_columns == 2 (three arrays):
+        tops : np.ndarray
+            Depth to the top of each layer (m). Shape: (n,)
+        bottoms : np.ndarray
+            Depth to the bottom of each layer (m). Shape: (n,)
+        Vs : np.ndarray
+            Vs of each layer (m/s). Shape: (n,)
     """
     
+    Thickness = np.asarray(Thickness, dtype=float)
+    Vs = np.asarray(Vs)
+
     if len(Thickness) != len(Vs):
         raise ValueError("Thickness and Vs arrays must have the same length.")
     if Depth_columns not in (1, 2):
@@ -85,7 +114,6 @@ def point_vs_to_thickness(depth,vs,starting_depth = 0,ending_depth = False):
     return np.array(new_thickness), np.array(new_vs)
 
 def calculate_vs30(depth,vs):
-
 
     mask = (depth <= 30)
     depth_masked = depth[mask]
